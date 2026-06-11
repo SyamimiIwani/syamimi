@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simpler Integration Calculator</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #cbd5e1;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background: var(--card);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        input {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        .bounds {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .result-box {
+            margin-top: 10px;
+            padding: 12px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .result-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+        }
+
+        .result-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .error {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .visualization {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            position: relative;
+            min-height: 350px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            max-height: 450px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls">
+        <h2>Integration</h2>
+        
+        <div class="input-group">
+            <label for="functionInput">Function f(x)</label>
+            <input type="text" id="functionInput" value="x^2 - 2*x" placeholder="e.g., x^2, sin(x), 2*x + 1">
+            <div id="errorMsg" class="error">Invalid math expression</div>
+        </div>
+
+        <div class="bounds">
+            <div class="input-group">
+                <label for="boundA">Lower Bound (a)</label>
+                <input type="number" id="boundA" value="0" step="any">
+            </div>
+            <div class="input-group">
+                <label for="boundB">Upper Bound (b)</label>
+                <input type="number" id="boundB" value="3" step="any">
+            </div>
+        </div>
+
+        <button onclick="calculateAndDraw()">Calculate & Plot</button>
+
+        <div class="result-box">
+            <div class="result-title">Definite Integral Value</div>
+            <div id="resultValue" class="result-value">0.000</div>
+        </div>
+    </div>
+
+    <div class="visualization">
+        <canvas id="graphCanvas"></canvas>
+    </div>
+</div>
+
+<script>
+    // Safe evaluation of mathematical expressions
+    function parseFunction(str) {
+        // Clean up basic notation to JavaScript Math equivalents
+        let parsed = str
+            .replace(/([0-9]+)(x)/g, '$1*$2') // Turn 2x into 2*x
+            .replace(/x\^([0-9.]+)/g, 'Math.pow(x,$1)') // Simple x^n handling
+            .replace(/sin/g, 'Math.sin')
+            .replace(/cos/g, 'Math.cos')
+            .replace(/tan/g, 'Math.tan')
+            .replace(/exp/g, 'Math.exp')
+            .replace(/pi/g, 'Math.PI')
+            .replace(/E/g, 'Math.E');
+        
+        // Return a function tracking evaluated x
+        return new Function('x', `try { return ${parsed}; } catch(e) { return NaN; }`);
+    }
+
+    // Numerical integration using Simpson's Rule
+    function simpsonsRule(f, a, b, n = 1000) {
+        if (n % 2 !== 0) n++; // n must be even
+        let h = (b - a) / n;
+        let sum = f(a) + f(b);
+
+        for (let i = 1; i < n; i++) {
+            let x = a + i * h;
+            sum += i % 2 === 0 ? 2 * f(x) : 4 * f(x);
+        }
+        return (h / 3) * sum;
+    }
+
+    function calculateAndDraw() {
+        const formulaInput = document.getElementById('functionInput').value;
+        const a = parseFloat(document.getElementById('boundA').value);
+        const b = parseFloat(document.getElementById('boundB').value);
+        const errorMsg = document.getElementById('errorMsg');
+        const resultValue = document.getElementById('resultValue');
+        
+        errorMsg.style.display = 'none';
+        const f = parseFunction(formulaInput);
+
+        // Test if function evaluation is working
+        if (isNaN(f(a)) && isNaN(f((a+b)/2))) {
+            errorMsg.style.display = 'block';
+            return;
+        }
+
+        // Calculate integral value
+        const integral = simpsonsRule(f, a, b);
+        resultValue.innerText = isNaN(integral) ? "Error" : integral.toFixed(4);
+
+        // Setup Canvas Plotting
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Resize canvas elements to fit CSS layout dynamically
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = 350 * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+        const width = rect.width;
+        const height = 350;
+
+        // Auto-scale window to view bounds cleanly
+        const paddingValue = 1.5;
+        const xMin = Math.min(a, b) - paddingValue;
+        const xMax = Math.max(a, b) + paddingValue;
+        
+        // Find min/max Y to fit the function window nicely
+        let yMin = -2;
+        let yMax = 2;
+        for (let i = 0; i <= width; i++) {
+            let x = xMin + (i / width) * (xMax - xMin);
+            let y = f(x);
+            if (!isNaN(y) && isFinite(y)) {
+                if (y < yMin) yMin = y - 1;
+                if (y > yMax) yMax = y + 1;
+            }
+        }
+
+        // Helper functions mapping math coordinates to canvas pixels
+        function toPixelX(x) {
+            return ((x - xMin) / (xMax - xMin)) * width;
+        }
+        function toPixelY(y) {
+            return height - ((y - yMin) / (yMax - yMin)) * height;
+        }
+
+        // Clear Viewport
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw Axis Lines
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        
+        // X Axis
+        let centerY = toPixelY(0);
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(width, centerY);
+        ctx.stroke();
+
+        // Y Axis
+        let centerX = toPixelX(0);
+        ctx.beginPath();
+        ctx.moveTo(centerX, 0);
+        ctx.lineTo(centerX, height);
+        ctx.stroke();
+
+        // Shade the integration area
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
+        ctx.beginPath();
+        let firstBoundPixel = toPixelX(a);
+        ctx.moveTo(firstBoundPixel, toPixelY(0));
+
+        for (let pixelX = Math.floor(toPixelX(a)); pixelX <= Math.ceil(toPixelX(b)); pixelX++) {
+            let mathX = xMin + (pixelX / width) * (xMax - xMin);
+            ctx.lineTo(pixelX, toPixelY(f(mathX)));
+        }
+        ctx.lineTo(toPixelX(b), toPixelY(0));
+        ctx.closePath();
+        ctx.fill();
+
+        // Draw the main Function Curve
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        
+        let started = false;
+        for (let pixelX = 0; pixelX <= width; pixelX++) {
+            let mathX = xMin + (pixelX / width) * (xMax - xMin);
+            let mathY = f(mathX);
+            
+            if (!isNaN(mathY) && isFinite(mathY)) {
+                if (!started) {
+                    ctx.moveTo(pixelX, toPixelY(mathY));
+                    started = true;
+                } else {
+                    ctx.lineTo(pixelX, toPixelY(mathY));
+                }
+            }
+        }
+        ctx.stroke();
+
+        // Label bounding lines
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        
+        // Lower bound line
+        ctx.beginPath();
+        ctx.moveTo(toPixelX(a), 0);
+        ctx.lineTo(toPixelX(a), height);
+        ctx.stroke();
+
+        // Upper bound line
+        ctx.beginPath();
+        ctx.moveTo(toPixelX(b), 0);
+        ctx.lineTo(toPixelX(b), height);
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset line dash
+    }
+
+    // Run calculation immediately on initial load
+    window.onload = calculateAndDraw;
+    // Keep plot clean if resizing window viewport
+    window.onresize = calculateAndDraw;
+</script>
+
+</body>
+</html>
