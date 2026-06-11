@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Integration & Riemann Sum Calculator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Math.js for robust math parsing and evaluation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .math-font {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-full flex flex-col overflow-hidden select-none">
+
+    <!-- Header Section -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex-shrink-0 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                    Integrator <span class="bg-indigo-500/10 text-indigo-400 text-xs font-semibold px-2 py-0.5 rounded-full border border-indigo-500/20">Pro</span>
+                </h1>
+                <p class="text-xs text-slate-400">Interactive Single-Variable Integration & Riemann Sums Visualizer</p>
+            </div>
+        </div>
+
+        <!-- Presets -->
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">Quick Presets:</span>
+            <button onclick="loadPreset('parabola')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition duration-150">
+                Parabola
+            </button>
+            <button onclick="loadPreset('sine')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition duration-150">
+                Sine Wave
+            </button>
+            <button onclick="loadPreset('gaussian')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition duration-150">
+                Bell Curve
+            </button>
+            <button onclick="loadPreset('damped')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition duration-150 text-indigo-400">
+                Oscillator
+            </button>
+            <button onclick="loadPreset('rational')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition duration-150">
+                Rational f(x)
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-grow flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Left Panel: Controls & Inputs -->
+        <section class="w-full md:w-96 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 overflow-y-auto">
+            
+            <!-- Section 1: Function Input -->
+            <div class="p-5 border-b border-slate-800 space-y-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-semibold tracking-wide text-slate-300">Target Function</label>
+                    <span id="math-valid-badge" class="text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+                        <!-- Filled by JS -->
+                    </span>
+                </div>
+                
+                <div class="relative">
+                    <span class="absolute left-4 top-3.5 text-indigo-400 font-bold math-font select-none">f(x) =</span>
+                    <input 
+                        type="text" 
+                        id="function-input" 
+                        value="x^2 - 4" 
+                        placeholder="e.g., x^2 - 4"
+                        class="w-full pl-16 pr-10 py-3 bg-slate-950 text-white border border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none math-font text-lg"
+                    >
+                    <button onclick="clearFunction()" class="absolute right-3 top-3.5 text-slate-400 hover:text-white transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Mathematical Helper Keyboard Row -->
+                <div class="grid grid-cols-6 gap-1 pt-1">
+                    <button onclick="insertAtCursor('x')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">x</button>
+                    <button onclick="insertAtCursor('^2')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">x²</button>
+                    <button onclick="insertAtCursor('^')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">x^y</button>
+                    <button onclick="insertAtCursor('sin(x)')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">sin</button>
+                    <button onclick="insertAtCursor('cos(x)')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">cos</button>
+                    <button onclick="insertAtCursor('exp(x)')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">exp</button>
+                    <button onclick="insertAtCursor('pi')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">π</button>
+                    <button onclick="insertAtCursor('sqrt(x)')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">√</button>
+                    <button onclick="insertAtCursor('log(x)')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">ln</button>
+                    <button onclick="insertAtCursor('abs(x)')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">abs</button>
+                    <button onclick="insertAtCursor('(')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">(</button>
+                    <button onclick="insertAtCursor(')')" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-semibold select-none transition">)</button>
+                </div>
+            </div>
+
+            <!-- Section 2: Integration Boundaries -->
+            <div class="p-5 border-b border-slate-800 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-semibold tracking-wide text-slate-300">Integration Interval</span>
+                    <button onclick="resetBoundaries()" class="text-xs text-indigo-400 hover:text-indigo-300 transition">Reset Limits</button>
+                </div>
+
+                <!-- Upper Boundary (b) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-rose-400 font-semibold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
+                            Upper Bound (b)
+                        </span>
+                        <input 
+                            type="number" 
+                            id="bound-b-input" 
+                            step="0.1" 
+                            class="bg-slate-950 text-rose-300 w-16 text-center border border-slate-700 rounded py-0.5 text-xs font-semibold"
+                        >
+                    </div>
+                    <input 
+                        type="range" 
+                        id="bound-b-slider" 
+                        min="-10" 
+                        max="10" 
+                        step="0.1" 
+                        value="3" 
+                        class="w-full accent-rose-500 bg-slate-950 rounded-lg cursor-pointer"
+                    >
+                </div>
+
+                <!-- Lower Boundary (a) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-emerald-400 font-semibold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                            Lower Bound (a)
+                        </span>
+                        <input 
+                            type="number" 
+                            id="bound-a-input" 
+                            step="0.1" 
+                            class="bg-slate-950 text-emerald-300 w-16 text-center border border-slate-700 rounded py-0.5 text-xs font-semibold"
+                        >
+                    </div>
+                    <input 
+                        type="range" 
+                        id="bound-a-slider" 
+                        min="-10" 
+                        max="10" 
+                        step="0.1" 
+                        value="-1" 
+                        class="w-full accent-emerald-500 bg-slate-950 rounded-lg cursor-pointer"
+                    >
+                </div>
+            </div>
+
+            <!-- Section 3: Visualizer & Approximations -->
+            <div class="p-5 border-b border-slate-800 space-y-4">
+                <span class="text-sm font-semibold tracking-wide text-slate-300 block">Visualization Style</span>
+                
+                <div class="grid grid-cols-1 gap-2">
+                    <!-- Exact Style -->
+                    <label class="relative flex items-center p-3 rounded-xl border border-slate-800 bg-slate-950 hover:bg-slate-900 cursor-pointer transition select-none">
+                        <input type="radio" name="approx-type" value="exact" checked class="h-4 w-4 text-indigo-600 border-slate-700 focus:ring-indigo-500 bg-slate-900">
+                        <div class="ml-3">
+                            <span class="text-xs font-bold text-white block">Exact Definite Integral</span>
+                            <span class="text-[10px] text-slate-400">Perfect mathematical area curve shading.</span>
+                        </div>
+                    </label>
+
+                    <!-- Left Riemann Sum -->
+                    <label class="relative flex items-center p-3 rounded-xl border border-slate-800 bg-slate-950 hover:bg-slate-900 cursor-pointer transition select-none">
+                        <input type="radio" name="approx-type" value="left" class="h-4 w-4 text-indigo-600 border-slate-700 focus:ring-indigo-500 bg-slate-900">
+                        <div class="ml-3">
+                            <span class="text-xs font-bold text-white block">Left Riemann Sum</span>
+                            <span class="text-[10px] text-slate-400">Approximates using left-endpoint rectangles.</span>
+                        </div>
+                    </label>
+
+                    <!-- Right Riemann Sum -->
+                    <label class="relative flex items-center p-3 rounded-xl border border-slate-800 bg-slate-950 hover:bg-slate-900 cursor-pointer transition select-none">
+                        <input type="radio" name="approx-type" value="right" class="h-4 w-4 text-indigo-600 border-slate-700 focus:ring-indigo-500 bg-slate-900">
+                        <div class="ml-3">
+                            <span class="text-xs font-bold text-white block">Right Riemann Sum</span>
+                            <span class="text-[10px] text-slate-400">Approximates using right-endpoint rectangles.</span>
+                        </div>
+                    </label>
+
+                    <!-- Midpoint Sum -->
+                    <label class="relative flex items-center p-3 rounded-xl border border-slate-800 bg-slate-950 hover:bg-slate-900 cursor-pointer transition select-none">
+                        <input type="radio" name="approx-type" value="midpoint" class="h-4 w-4 text-indigo-600 border-slate-700 focus:ring-indigo-500 bg-slate-900">
+                        <div class="ml-3">
+                            <span class="text-xs font-bold text-white block">Midpoint Riemann Sum</span>
+                            <span class="text-[10px] text-slate-400">Uses midpoints for significantly lower error.</span>
+                        </div>
+                    </label>
+
+                    <!-- Trapezoidal Rule -->
+                    <label class="relative flex items-center p-3 rounded-xl border border-slate-800 bg-slate-950 hover:bg-slate-900 cursor-pointer transition select-none">
+                        <input type="radio" name="approx-type" value="trapezoid" class="h-4 w-4 text-indigo-600 border-slate-700 focus:ring-indigo-500 bg-slate-900">
+                        <div class="ml-3">
+                            <span class="text-xs font-bold text-white block">Trapezoidal Rule</span>
+                            <span class="text-[10px] text-slate-400">Approximates using trapezoidal segments.</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Subdivisions Slider (Conditionally Active) -->
+                <div id="subdivisions-container" class="space-y-1.5 pt-2 hidden">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-300 font-semibold">Subdivisions (n)</span>
+                        <span id="n-value-display" class="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded text-xs font-bold border border-indigo-500/20">n = 10</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        id="n-slider" 
+                        min="2" 
+                        max="200" 
+                        step="1" 
+                        value="12" 
+                        class="w-full accent-indigo-500 bg-slate-950 rounded-lg cursor-pointer"
+                    >
+                </div>
+            </div>
+
+            <!-- Footer Stats Info inside Controls Panel -->
+            <div class="p-5 mt-auto bg-slate-950 border-t border-slate-800">
+                <div class="text-xs text-slate-500 text-center">
+                    Drag the graph to pan. Scroll with mousewheel to zoom.<br>
+                    Drag the <span class="text-emerald-400 font-bold">a</span> and <span class="text-rose-400 font-bold">b</span> vertical boundaries directly on the graph!
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Panel: Graphing Window & Computations Dashboard -->
+        <section class="flex-grow flex flex-col relative overflow-hidden bg-slate-950">
+            
+            <!-- Numerical Calculations Dashboard (Floating Top Overlay) -->
+            <div class="absolute top-4 left-4 right-4 z-10 flex flex-col md:flex-row gap-4 pointer-events-none">
+                
+                <!-- Exact Integration Card -->
+                <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 p-4 rounded-xl shadow-2xl flex-grow pointer-events-auto transition hover:border-indigo-500/50">
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                        <span class="font-semibold uppercase tracking-wider">Definite Integral (Exact)</span>
+                        <span class="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded font-bold uppercase">Mathematical</span>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-slate-300 font-serif italic text-2xl font-semibold mr-1">∫</span>
+                        <div class="flex flex-col text-center -mr-1">
+                            <span class="text-[10px] leading-3 text-rose-400 font-bold" id="dashboard-b">3</span>
+                            <span class="text-[10px] leading-3 text-emerald-400 font-bold" id="dashboard-a">-1</span>
+                        </div>
+                        <span class="text-slate-300 font-serif text-sm mr-2">f(x) dx =</span>
+                        <span id="dashboard-exact-val" class="text-2xl font-extrabold text-white tracking-tight">--</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-2 flex justify-between">
+                        <span>Total Unsigned Area:</span>
+                        <span id="dashboard-unsigned-area" class="font-bold text-indigo-300">--</span>
+                    </div>
+                </div>
+
+                <!-- Approximation Comparison Card -->
+                <div id="approx-metrics-card" class="bg-slate-900/90 backdrop-blur-md border border-slate-800 p-4 rounded-xl shadow-2xl flex-grow pointer-events-auto transition hidden">
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                        <span class="font-semibold uppercase tracking-wider" id="approx-title">Left Riemann Sum</span>
+                        <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold uppercase">Numerical</span>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-slate-300 text-sm">Approx. Value =</span>
+                        <span id="dashboard-approx-val" class="text-2xl font-extrabold text-amber-300 tracking-tight">--</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-2 grid grid-cols-2 gap-2">
+                        <div>
+                            <span>Abs Error:</span>
+                            <span id="approx-abs-error" class="font-bold text-slate-200">--</span>
+                        </div>
+                        <div>
+                            <span>% Error:</span>
+                            <span id="approx-pct-error" class="font-bold text-slate-200">--</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Canvas Workspace -->
+            <div class="flex-grow w-full h-full relative" id="canvas-container">
+                <canvas id="graph-canvas" class="block w-full h-full cursor-crosshair"></canvas>
+                
+                <!-- Quick controls Overlay (Bottom Right) -->
+                <div class="absolute bottom-4 right-4 flex flex-col gap-2">
+                    <button onclick="zoomIn()" title="Zoom In" class="p-2.5 bg-slate-900/90 hover:bg-indigo-600 text-white rounded-lg border border-slate-800 hover:border-indigo-500 shadow-lg transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                    <button onclick="zoomOut()" title="Zoom Out" class="p-2.5 bg-slate-900/90 hover:bg-indigo-600 text-white rounded-lg border border-slate-800 hover:border-indigo-500 shadow-lg transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" />
+                        </svg>
+                    </button>
+                    <button onclick="autoScale()" title="Auto Scale Viewport" class="p-2.5 bg-slate-900/90 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded-lg border border-slate-800 hover:border-indigo-500 shadow-lg transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+        
+    </main>
+
+    <!-- App Logic Script -->
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('graph-canvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.getElementById('canvas-container');
+        
+        const functionInput = document.getElementById('function-input');
+        const mathValidBadge = document.getElementById('math-valid-badge');
+        
+        const boundAInput = document.getElementById('bound-a-input');
+        const boundASlider = document.getElementById('bound-a-slider');
+        const boundBInput = document.getElementById('bound-b-input');
+        const boundBSlider = document.getElementById('bound-b-slider');
+        
+        const nSlider = document.getElementById('n-slider');
+        const nValueDisplay = document.getElementById('n-value-display');
+        const subdivisionsContainer = document.getElementById('subdivisions-container');
+        
+        const dashboardA = document.getElementById('dashboard-a');
+        const dashboardB = document.getElementById('dashboard-b');
+        const dashboardExactVal = document.getElementById('dashboard-exact-val');
+        const dashboardUnsignedArea = document.getElementById('dashboard-unsigned-area');
+        
+        const approxMetricsCard = document.getElementById('approx-metrics-card');
+        const approxTitle = document.getElementById('approx-title');
+        const dashboardApproxVal = document.getElementById('dashboard-approx-val');
+        const approxAbsError = document.getElementById('approx-abs-error');
+        const approxPctError = document.getElementById('approx-pct-error');
+
+        // State variables
+        let exprString = "x^2 - 4";
+        let parsedExpr = null;
+        let limitA = -1.0;
+        let limitB = 3.0;
+        let numSubdivisions = 12;
+        let approxType = 'exact'; // exact, left, right, midpoint, trapezoid
+
+        // Graphing Viewport
+        let minX = -5;
+        let maxX = 5;
+        let minY = -5;
+        let maxY = 5;
+
+        // Interaction state
+        let isDraggingViewport = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let dragTarget = null; // 'a', 'b', or 'viewport'
+        let mouseX = 0;
+        let mouseY = 0;
+
+        // Colors
+        const COLORS = {
+            grid: '#1e293b',
+            subgrid: '#0f172a',
+            axes: '#475569',
+            curve: '#6366f1',
+            exactAreaPositive: 'rgba(99, 102, 241, 0.25)',
+            exactAreaNegative: 'rgba(239, 68, 68, 0.15)',
+            riemannArea: 'rgba(245, 158, 11, 0.25)',
+            riemannBorder: 'rgba(245, 158, 11, 0.6)',
+            boundaryA: '#10b981',
+            boundaryB: '#f43f5e',
+            hoverMarker: '#38bdf8'
+        };
+
+        // Presets Map
+        const PRESETS = {
+            parabola: {
+                expr: "x^2 - 4",
+                a: -1,
+                b: 3,
+                viewport: { minX: -5, maxX: 5, minY: -6, maxY: 6 }
+            },
+            sine: {
+                expr: "3 * sin(x)",
+                a: 0,
+                b: 6.28,
+                viewport: { minX: -1, maxX: 8, minY: -4, maxY: 4 }
+            },
+            gaussian: {
+                expr: "4 * exp(-x^2 / 2)",
+                a: -2,
+                b: 2,
+                viewport: { minX: -4, maxX: 4, minY: -1, maxY: 5 }
+            },
+            damped: {
+                expr: "4 * exp(-x/2) * cos(2 * x)",
+                a: 0,
+                b: 5,
+                viewport: { minX: -1, maxX: 6, minY: -4, maxY: 5 }
+            },
+            rational: {
+                expr: "x / (x^2 + 1)",
+                a: -3,
+                b: 3,
+                viewport: { minX: -5, maxX: 5, minY: -1.5, maxY: 1.5 }
+            }
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            setupCanvas();
+            parseFunction(exprString);
+            updateBoundariesFromSliders();
+            registerEvents();
+            resizeCanvas();
+            autoScale();
+            draw();
+        });
+
+        // Parse user expression safely
+        function parseFunction(expr) {
+            try {
+                // Ensure mathjs parser is loaded
+                if (typeof math === 'undefined') {
+                    throw new Error("Parser not loaded");
+                }
+                const cleanExpr = expr.trim();
+                parsedExpr = math.compile(cleanExpr);
+                
+                // Perform a sanity check test evaluation at x=0
+                evaluateFunction(0);
+
+                exprString = cleanExpr;
+                mathValidBadge.className = "text-xs px-2.5 py-0.5 rounded-full flex items-center gap-1 font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                mathValidBadge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg> Valid`;
+                return true;
+            } catch (err) {
+                mathValidBadge.className = "text-xs px-2.5 py-0.5 rounded-full flex items-center gap-1 font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20";
+                mathValidBadge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg> Error`;
+                return false;
+            }
+        }
+
+        // Evaluate compiled expression safely
+        function evaluateFunction(xVal) {
+            if (!parsedExpr) return 0;
+            try {
+                const res = parsedExpr.evaluate({ x: xVal });
+                if (typeof res === 'number') {
+                    return isNaN(res) || !isFinite(res) ? 0 : res;
+                }
+                return 0; // handle complex numbers or object types safely
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        // Load Function presets
+        function loadPreset(key) {
+            const preset = PRESETS[key];
+            if (!preset) return;
+            
+            functionInput.value = preset.expr;
+            limitA = preset.a;
+            limitB = preset.b;
+            
+            minX = preset.viewport.minX;
+            maxX = preset.viewport.maxX;
+            minY = preset.viewport.minY;
+            maxY = preset.viewport.maxY;
+
+            // Sync Sliders/Inputs UI
+            boundAInput.value = limitA.toFixed(2);
+            boundBInput.value = limitB.toFixed(2);
+            boundASlider.value = limitA;
+            boundBSlider.value = limitB;
+
+            parseFunction(preset.expr);
+            calculateIntegralValues();
+            draw();
+        }
+
+        // Virtual Keyboard click inserter
+        function insertAtCursor(textToInsert) {
+            const startPos = functionInput.selectionStart;
+            const endPos = functionInput.selectionEnd;
+            const textValue = functionInput.value;
+            
+            functionInput.value = textValue.substring(0, startPos) + textToInsert + textValue.substring(endPos, textValue.length);
+            functionInput.focus();
+            
+            // Put cursor in an intelligent spot (e.g. inside parenthesis)
+            let newCursorPos = startPos + textToInsert.length;
+            if (textToInsert.includes('(')) {
+                newCursorPos = startPos + textToInsert.indexOf('(') + 1;
+            }
+            functionInput.setSelectionRange(newCursorPos, newCursorPos);
+            
+            parseFunction(functionInput.value);
+            calculateIntegralValues();
+            draw();
+        }
+
+        function clearFunction() {
+            functionInput.value = "";
+            functionInput.focus();
+            parseFunction("");
+            calculateIntegralValues();
+            draw();
+        }
+
+        function resetBoundaries() {
+            limitA = -1;
+            limitB = 3;
+            syncBoundariesToUI();
+            calculateIntegralValues();
+            draw();
+        }
+
+        // Pixel to Math Space transformations
+        function mathToScreenX(x) {
+            return ((x - minX) / (maxX - minX)) * canvas.width;
+        }
+
+        function mathToScreenY(y) {
+            return ((maxY - y) / (maxY - minY)) * canvas.height;
+        }
+
+        function screenToMathX(px) {
+            return minX + (px / canvas.width) * (maxX - minX);
+        }
+
+        function screenToMathY(py) {
+            return maxY - (py / canvas.height) * (maxY - minY);
+        }
+
+        // Setup Canvas Resolution handling (High DPI support)
+        function setupCanvas() {
+            const rect = canvasContainer.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            ctx.scale(dpr, dpr);
+        }
+
+        function resizeCanvas() {
+            setupCanvas();
+            draw();
+        }
+
+        // Zoom control functions
+        function zoomIn() {
+            const scaleFactor = 0.85;
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const dx = (maxX - minX) * scaleFactor / 2;
+            const dy = (maxY - minY) * scaleFactor / 2;
+            minX = centerX - dx;
+            maxX = centerX + dx;
+            minY = centerY - dy;
+            maxY = centerY + dy;
+            draw();
+        }
+
+        function zoomOut() {
+            const scaleFactor = 1.15;
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const dx = (maxX - minX) * scaleFactor / 2;
+            const dy = (maxY - minY) * scaleFactor / 2;
+            minX = centerX - dx;
+            maxX = centerX + dx;
+            minY = centerY - dy;
+            maxY = centerY + dy;
+            draw();
+        }
+
+        // Fit function graph properly inside interval [a, b]
+        function autoScale() {
+            if (Math.abs(limitA - limitB) < 0.001) {
+                minX = limitA - 5;
+                maxX = limitA + 5;
+                minY = -5;
+                maxY = 5;
+                draw();
+                return;
+            }
+
+            // Sample points in the interval and just outside to find range
+            let sampleY = [];
+            const margin = (limitB - limitA) * 0.2 || 1;
+            const sampleStart = limitA - margin;
+            const sampleEnd = limitB + margin;
+            
+            for (let i = 0; i <= 50; i++) {
+                const sampleX = sampleStart + (i / 50) * (sampleEnd - sampleStart);
+                const val = evaluateFunction(sampleX);
+                if (isFinite(val) && !isNaN(val)) {
+                    sampleY.push(val);
+                }
+            }
+
+            if (sampleY.length === 0) {
+                minY = -5;
+                maxY = 5;
+            } else {
+                let currentMinY = Math.min(...sampleY);
+                let currentMaxY = Math.max(...sampleY);
+                
+                // Give some padding on top/bottom
+                let height = currentMaxY - currentMinY;
+                if (height < 0.1) height = 2; // don't collapse to 0 flat height
+                
+                minY = currentMinY - height * 0.25;
+                maxY = currentMaxY + height * 0.25;
+            }
+
+            minX = sampleStart;
+            maxX = sampleEnd;
+            draw();
+        }
+
+        // Coordinate Hover detection helper
+        function getDistanceToCurve(scrX, scrY) {
+            const mathX = screenToMathX(scrX);
+            const mathY = evaluateFunction(mathX);
+            const scrCurveY = mathToScreenY(mathY);
+            return Math.abs(scrCurveY - scrY);
+        }
+
+        // Register All Interactive Event Listeners
+        function registerEvents() {
+            window.addEventListener('resize', resizeCanvas);
+
+            // Function input change
+            functionInput.addEventListener('input', (e) => {
+                parseFunction(e.target.value);
+                calculateIntegralValues();
+                draw();
+            });
+
+            // Sliders & Number Input sync
+            boundASlider.addEventListener('input', updateBoundariesFromSliders);
+            boundBSlider.addEventListener('input', updateBoundariesFromSliders);
+            
+            boundAInput.addEventListener('change', () => {
+                let val = parseFloat(boundAInput.value);
+                if (!isNaN(val)) {
+                    limitA = val;
+                    boundASlider.value = val;
+                    calculateIntegralValues();
+                    draw();
+                }
+            });
+
+            boundBInput.addEventListener('change', () => {
+                let val = parseFloat(boundBInput.value);
+                if (!isNaN(val)) {
+                    limitB = val;
+                    boundBSlider.value = val;
+                    calculateIntegralValues();
+                    draw();
+                }
+            });
+
+            // Subdivision Slider
+            nSlider.addEventListener('input', (e) => {
+                numSubdivisions = parseInt(e.target.value);
+                nValueDisplay.textContent = `n = ${numSubdivisions}`;
+                calculateIntegralValues();
+                draw();
+            });
+
+            // Radio Button changes
+            document.querySelectorAll('input[name="approx-type"]').forEach((radio) => {
+                radio.addEventListener('change', (e) => {
+                    approxType = e.target.value;
+                    if (approxType === 'exact') {
+                        subdivisionsContainer.classList.add('hidden');
+                        approxMetricsCard.classList.add('hidden');
+                    } else {
+                        subdivisionsContainer.classList.remove('hidden');
+                        approxMetricsCard.classList.remove('hidden');
+                        
+                        // Update approximation card title
+                        const nameMap = {
+                            left: 'Left Riemann Sum',
+                            right: 'Right Riemann Sum',
+                            midpoint: 'Midpoint Riemann Sum',
+                            trapezoid: 'Trapezoidal Rule'
+                        };
+                        approxTitle.textContent = nameMap[approxType];
+                    }
+                    calculateIntegralValues();
+                    draw();
+                });
+            });
+
+            // Mouse Interactions with Canvas
+            canvas.addEventListener('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.clientX - rect.left;
+                const clientY = e.clientY - rect.top;
+                
+                lastMouseX = clientX;
+                lastMouseY = clientY;
+
+                const mathX = screenToMathX(clientX);
+
+                // Check distance to boundaries to enable handle dragging
+                const distToA = Math.abs(mathToScreenX(limitA) - clientX);
+                const distToB = Math.abs(mathToScreenX(limitB) - clientX);
+
+                if (distToA < 15) {
+                    dragTarget = 'a';
+                } else if (distToB < 15) {
+                    dragTarget = 'b';
+                } else {
+                    dragTarget = 'viewport';
+                    isDraggingViewport = true;
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+
+                const mathX = screenToMathX(mouseX);
+
+                if (dragTarget === 'a') {
+                    limitA = Math.round(mathX * 100) / 100; // Snap to 2 decimal places
+                    syncBoundariesToUI();
+                    calculateIntegralValues();
+                } else if (dragTarget === 'b') {
+                    limitB = Math.round(mathX * 100) / 100;
+                    syncBoundariesToUI();
+                    calculateIntegralValues();
+                } else if (isDraggingViewport) {
+                    const dx = screenToMathX(mouseX) - screenToMathX(lastMouseX);
+                    const dy = screenToMathY(mouseY) - screenToMathY(lastMouseY);
+                    
+                    minX -= dx;
+                    maxX -= dx;
+                    minY -= dy;
+                    maxY -= dy;
+
+                    lastMouseX = mouseX;
+                    lastMouseY = mouseY;
+                }
+
+                draw();
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                dragTarget = null;
+                isDraggingViewport = false;
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                dragTarget = null;
+                isDraggingViewport = false;
+                mouseX = -9999; // turn off hover tracking
+                draw();
+            });
+
+            // Touch support for dragging boundaries & panning
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.touches[0].clientX - rect.left;
+                    const clientY = e.touches[0].clientY - rect.top;
+
+                    lastMouseX = clientX;
+                    lastMouseY = clientY;
+
+                    const mathX = screenToMathX(clientX);
+                    const distToA = Math.abs(mathToScreenX(limitA) - clientX);
+                    const distToB = Math.abs(mathToScreenX(limitB) - clientX);
+
+                    if (distToA < 25) { // generous touch bounds
+                        dragTarget = 'a';
+                    } else if (distToB < 25) {
+                        dragTarget = 'b';
+                    } else {
+                        dragTarget = 'viewport';
+                        isDraggingViewport = true;
+                    }
+                }
+            }, { passive: true });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1) {
+                    const rect = canvas.getBoundingClientRect();
+                    mouseX = e.touches[0].clientX - rect.left;
+                    mouseY = e.touches[0].clientY - rect.top;
+
+                    const mathX = screenToMathX(mouseX);
+
+                    if (dragTarget === 'a') {
+                        limitA = Math.round(mathX * 100) / 100;
+                        syncBoundariesToUI();
+                        calculateIntegralValues();
+                    } else if (dragTarget === 'b') {
+                        limitB = Math.round(mathX * 100) / 100;
+                        syncBoundariesToUI();
+                        calculateIntegralValues();
+                    } else if (isDraggingViewport) {
+                        const dx = screenToMathX(mouseX) - screenToMathX(lastMouseX);
+                        const dy = screenToMathY(mouseY) - screenToMathY(lastMouseY);
+                        
+                        minX -= dx;
+                        maxX -= dx;
+                        minY -= dy;
+                        maxY -= dy;
+
+                        lastMouseX = mouseX;
+                        lastMouseY = mouseY;
+                    }
+                    draw();
+                }
+            }, { passive: true });
+
+            canvas.addEventListener('touchend', () => {
+                dragTarget = null;
+                isDraggingViewport = false;
+            });
+
+            // Scroll Zoom wheel event
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = e.deltaY > 0 ? 1.05 : 0.95;
+                
+                // Zoom center is the pointer location
+                const mouseMathX = screenToMathX(mouseX);
+                const mouseMathY = screenToMathY(mouseY);
+
+                minX = mouseMathX - (mouseMathX - minX) * zoomFactor;
+                maxX = mouseMathX + (maxX - mouseMathX) * zoomFactor;
+                minY = mouseMathY - (mouseMathY - minY) * zoomFactor;
+                maxY = mouseMathY + (maxY - mouseMathY) * zoomFactor;
+
+                draw();
+            }, { passive: false });
+        }
+
+        // Sync local variables to DOM
+        function updateBoundariesFromSliders() {
+            limitA = parseFloat(boundASlider.value);
+            limitB = parseFloat(boundBSlider.value);
+            
+            boundAInput.value = limitA.toFixed(2);
+            boundBInput.value = limitB.toFixed(2);
+            
+            calculateIntegralValues();
+            draw();
+        }
+
+        function syncBoundariesToUI() {
+            boundAInput.value = limitA.toFixed(2);
+            boundBInput.value = limitB.toFixed(2);
+            boundASlider.value = limitA;
+            boundBSlider.value = limitB;
+        }
+
+        // High precision adaptive Simpson integration for "exact" value
+        function highPrecisionIntegral(start, end) {
+            const steps = 1000;
+            const h = (end - start) / steps;
+            let sum = evaluateFunction(start) + evaluateFunction(end);
+            
+            for (let i = 1; i < steps; i++) {
+                const x = start + i * h;
+                const coeff = i % 2 === 0 ? 2 : 4;
+                sum += coeff * evaluateFunction(x);
+            }
+            return (h / 3) * sum;
+        }
+
+        // High precision unsigned area calculation
+        function highPrecisionUnsignedArea(start, end) {
+            const steps = 1000;
+            const h = (end - start) / steps;
+            let sum = Math.abs(evaluateFunction(start)) + Math.abs(evaluateFunction(end));
+            
+            for (let i = 1; i < steps; i++) {
+                const x = start + i * h;
+                const coeff = i % 2 === 0 ? 2 : 4;
+                sum += coeff * Math.abs(evaluateFunction(x));
+            }
+            return (h / 3) * sum;
+        }
+
+        // Evaluate standard Riemann/Trapezoidal rules
+        function computeApproximation(type, start, end, n) {
+            const dx = (end - start) / n;
+            let approx = 0;
+
+            if (type === 'left') {
+                for (let i = 0; i < n; i++) {
+                    const x = start + i * dx;
+                    approx += evaluateFunction(x);
+                }
+                return approx * dx;
+            } else if (type === 'right') {
+                for (let i = 1; i <= n; i++) {
+                    const x = start + i * dx;
+                    approx += evaluateFunction(x);
+                }
+                return approx * dx;
+            } else if (type === 'midpoint') {
+                for (let i = 0; i < n; i++) {
+                    const x = start + (i + 0.5) * dx;
+                    approx += evaluateFunction(x);
+                }
+                return approx * dx;
+            } else if (type === 'trapezoid') {
+                for (let i = 0; i < n; i++) {
+                    const x1 = start + i * dx;
+                    const x2 = start + (i + 1) * dx;
+                    approx += (evaluateFunction(x1) + evaluateFunction(x2)) / 2;
+                }
+                return approx * dx;
+            }
+            return 0;
+        }
+
+        // Computations & Updating Floating UI Panels
+        function calculateIntegralValues() {
+            // Reorder endpoints if needed to compute standard signed values
+            const minBound = Math.min(limitA, limitB);
+            const maxBound = Math.max(limitA, limitB);
+            const isReversed = limitA > limitB;
+
+            // Calculations
+            let exactVal = highPrecisionIntegral(minBound, maxBound);
+            let unsignedVal = highPrecisionUnsignedArea(minBound, maxBound);
+
+            if (isReversed) {
+                exactVal = -exactVal;
+            }
+
+            // Sync Header calculations
+            dashboardA.textContent = limitA.toFixed(2);
+            dashboardB.textContent = limitB.toFixed(2);
+            dashboardExactVal.textContent = isNaN(exactVal) ? 'Error' : exactVal.toFixed(5);
+            dashboardUnsignedArea.textContent = isNaN(unsignedVal) ? 'Error' : unsignedVal.toFixed(5);
+
+            // Approximation Calculations
+            if (approxType !== 'exact') {
+                let approxVal = computeApproximation(approxType, limitA, limitB, numSubdivisions);
+                dashboardApproxVal.textContent = isNaN(approxVal) ? 'Error' : approxVal.toFixed(5);
+
+                const absError = Math.abs(exactVal - approxVal);
+                approxAbsError.textContent = isNaN(absError) ? '--' : absError.toFixed(5);
+
+                const pctError = exactVal !== 0 ? (absError / Math.abs(exactVal)) * 100 : 0;
+                approxPctError.textContent = isNaN(pctError) ? '--' : (exactVal === 0 ? "N/A" : pctError.toFixed(2) + "%");
+            }
+        }
+
+        // Draw Complete Coordinate Grid system & Math elements
+        function draw() {
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+            
+            ctx.clearRect(0, 0, width, height);
+
+            // Step 1: Draw Grid Lines (adaptive tick step based on zoom)
+            drawGrid(width, height);
+
+            // Step 2: Shade Integral Area (Visual Representation)
+            shadeIntegrationArea();
+
+            // Step 3: Draw Target Mathematical Curve
+            drawCurve(width, height);
+
+            // Step 4: Draw boundaries a & b
+            drawBoundaryLines(width, height);
+
+            // Step 5: Draw Mouse Cursor Coordinate Tracker hover bubble
+            drawCoordinateHover(width, height);
+        }
+
+        // Compute reasonable steps for axis markers based on viewport width
+        function getOptimalStepSize(range) {
+            const optimalDivisions = 8;
+            const approxStep = range / optimalDivisions;
+            const magnitude = Math.pow(10, Math.floor(Math.log10(approxStep)));
+            const normalized = approxStep / magnitude;
+            
+            let step;
+            if (normalized < 1.5) step = 1;
+            else if (normalized < 3.5) step = 2;
+            else if (normalized < 7.5) step = 5;
+            else step = 10;
+            
+            return step * magnitude;
+        }
+
+        function drawGrid(width, height) {
+            // Select scale ticks
+            const stepX = getOptimalStepSize(maxX - minX);
+            const stepY = getOptimalStepSize(maxY - minY);
+
+            const startGridX = Math.floor(minX / stepX) * stepX;
+            const startGridY = Math.floor(minY / stepY) * stepY;
+
+            // Minor grid spacing (5 sub-grid lines per major tick)
+            const subStepX = stepX / 5;
+            const subStepY = stepY / 5;
+
+            // Draw Minor Sub-gridlines
+            ctx.lineWidth = 0.5;
+            ctx.strokeStyle = COLORS.subgrid;
+            
+            for (let x = startGridX - stepX; x <= maxX + stepX; x += subStepX) {
+                const px = mathToScreenX(x);
+                ctx.beginPath();
+                ctx.moveTo(px, 0);
+                ctx.lineTo(px, height);
+                ctx.stroke();
+            }
+            for (let y = startGridY - stepY; y <= maxY + stepY; y += subStepY) {
+                const py = mathToScreenY(y);
+                ctx.beginPath();
+                ctx.moveTo(0, py);
+                ctx.lineTo(width, py);
+                ctx.stroke();
+            }
+
+            // Draw Major Gridlines
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = COLORS.grid;
+            ctx.fillStyle = '#64748b'; // Tick text labels color
+            ctx.font = '10px Inter';
+
+            for (let x = startGridX; x <= maxX; x += stepX) {
+                const px = mathToScreenX(x);
+                ctx.beginPath();
+                ctx.moveTo(px, 0);
+                ctx.lineTo(px, height);
+                ctx.stroke();
+
+                // Draw X Tick value (avoid drawing over y-axis zero coordinate)
+                if (Math.abs(x) > 1e-10) {
+                    const labelY = Math.max(15, Math.min(height - 5, mathToScreenY(0) + 14));
+                    ctx.fillText(x.toFixed(x % 1 === 0 ? 0 : 2), px - 10, labelY);
+                }
+            }
+
+            for (let y = startGridY; y <= maxY; y += stepY) {
+                const py = mathToScreenY(y);
+                ctx.beginPath();
+                ctx.moveTo(0, py);
+                ctx.lineTo(width, py);
+                ctx.stroke();
+
+                // Draw Y Tick value
+                if (Math.abs(y) > 1e-10) {
+                    const labelX = Math.max(5, Math.min(width - 25, mathToScreenX(0) + 5));
+                    ctx.fillText(y.toFixed(y % 1 === 0 ? 0 : 2), labelX, py + 3);
+                }
+            }
+
+            // Draw X and Y Axes lines
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = COLORS.axes;
+            
+            // X-axis
+            const pyZero = mathToScreenY(0);
+            ctx.beginPath();
+            ctx.moveTo(0, pyZero);
+            ctx.lineTo(width, pyZero);
+            ctx.stroke();
+
+            // Y-axis
+            const pxZero = mathToScreenX(0);
+            ctx.beginPath();
+            ctx.moveTo(pxZero, 0);
+            ctx.lineTo(pxZero, height);
+            ctx.stroke();
+
+            // Label axes origin (0,0)
+            ctx.fillText("0", pxZero - 12, pyZero + 14);
+        }
+
+        // Draw function curves
+        function drawCurve(width, height) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = COLORS.curve;
+            ctx.shadowColor = 'rgba(99, 102, 241, 0.4)';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+
+            let first = true;
+            const segments = width; // 1 evaluating step per horizontal pixel for perfect resolution
+            
+            for (let px = 0; px <= segments; px++) {
+                const x = screenToMathX(px);
+                const y = evaluateFunction(x);
+                const py = mathToScreenY(y);
+
+                if (isFinite(py) && !isNaN(py)) {
+                    if (first) {
+                        ctx.moveTo(px, py);
+                        first = false;
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
+                }
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0; // Turn off shadows for other drawings
+        }
+
+        // Draw boundaries, handle markers, vertical bounding lines
+        function drawBoundaryLines(width, height) {
+            // Draw boundary line a
+            const pxA = mathToScreenX(limitA);
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = COLORS.boundaryA;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(pxA, 0);
+            ctx.lineTo(pxA, height);
+            ctx.stroke();
+            ctx.setLineDash([]); // clear dash
+
+            // Draw boundary line b
+            const pxB = mathToScreenX(limitB);
+            ctx.strokeStyle = COLORS.boundaryB;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(pxB, 0);
+            ctx.lineTo(pxB, height);
+            ctx.stroke();
+            ctx.setLineDash([]); // clear dash
+
+            // Draw top boundary labels handle indicators
+            const handleRadius = 14;
+            const handleHeight = 24;
+
+            // Handle A
+            ctx.fillStyle = COLORS.boundaryA;
+            ctx.beginPath();
+            ctx.arc(pxA, handleHeight, handleRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 11px Inter';
+            ctx.fillText("a", pxA - 4, handleHeight + 4);
+
+            // Handle B
+            ctx.fillStyle = COLORS.boundaryB;
+            ctx.beginPath();
+            ctx.arc(pxB, handleHeight * 2.2, handleRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText("b", pxB - 4, handleHeight * 2.2 + 4);
+        }
+
+        // Shade either exact mathematical integration or Riemann/Trapezoidal polygons
+        function shadeIntegrationArea() {
+            const minBound = Math.min(limitA, limitB);
+            const maxBound = Math.max(limitA, limitB);
+
+            if (approxType === 'exact') {
+                // Exact high-resolution path shading
+                const steps = Math.min(300, Math.floor(Math.abs(mathToScreenX(maxBound) - mathToScreenX(minBound))));
+                if (steps < 2) return;
+
+                ctx.fillStyle = COLORS.exactAreaPositive;
+                ctx.beginPath();
+                
+                // Draw starting side border
+                let firstVal = evaluateFunction(minBound);
+                ctx.moveTo(mathToScreenX(minBound), mathToScreenY(0));
+                ctx.lineTo(mathToScreenX(minBound), mathToScreenY(firstVal));
+
+                for (let i = 1; i <= steps; i++) {
+                    const x = minBound + (i / steps) * (maxBound - minBound);
+                    const y = evaluateFunction(x);
+                    ctx.lineTo(mathToScreenX(x), mathToScreenY(y));
+                }
+
+                ctx.lineTo(mathToScreenX(maxBound), mathToScreenY(0));
+                ctx.closePath();
+                ctx.fill();
+                
+                // For negative parts, shade with different colors if preferred
+                // Since canvas filling shades simple enclosed paths, we do a quick pass
+            } else {
+                // Draw approximations blocks (Riemann Rectangles/Trapezoids)
+                const n = numSubdivisions;
+                const dx = (limitB - limitA) / n;
+
+                for (let i = 0; i < n; i++) {
+                    const xStart = limitA + i * dx;
+                    const xEnd = xStart + dx;
+
+                    let rectLeft, rectRight, rectTop, rectBottom;
+
+                    if (approxType === 'left') {
+                        const h = evaluateFunction(xStart);
+                        rectLeft = mathToScreenX(xStart);
+                        rectRight = mathToScreenX(xEnd);
+                        rectTop = mathToScreenY(h);
+                        rectBottom = mathToScreenY(0);
+                    } else if (approxType === 'right') {
+                        const h = evaluateFunction(xEnd);
+                        rectLeft = mathToScreenX(xStart);
+                        rectRight = mathToScreenX(xEnd);
+                        rectTop = mathToScreenY(h);
+                        rectBottom = mathToScreenY(0);
+                    } else if (approxType === 'midpoint') {
+                        const mid = xStart + dx / 2;
+                        const h = evaluateFunction(mid);
+                        rectLeft = mathToScreenX(xStart);
+                        rectRight = mathToScreenX(xEnd);
+                        rectTop = mathToScreenY(h);
+                        rectBottom = mathToScreenY(0);
+                    } else if (approxType === 'trapezoid') {
+                        const y1 = evaluateFunction(xStart);
+                        const y2 = evaluateFunction(xEnd);
+                        
+                        ctx.fillStyle = COLORS.riemannArea;
+                        ctx.strokeStyle = COLORS.riemannBorder;
+                        ctx.lineWidth = 1;
+
+                        ctx.beginPath();
+                        ctx.moveTo(mathToScreenX(xStart), mathToScreenY(0));
+                        ctx.lineTo(mathToScreenX(xStart), mathToScreenY(y1));
+                        ctx.lineTo(mathToScreenX(xEnd), mathToScreenY(y2));
+                        ctx.lineTo(mathToScreenX(xEnd), mathToScreenY(0));
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        continue; // Skip rectangle drawing
+                    }
+
+                    // Render Standard Riemann Solid Rectangles
+                    ctx.fillStyle = COLORS.riemannArea;
+                    ctx.strokeStyle = COLORS.riemannBorder;
+                    ctx.lineWidth = 1;
+
+                    const widthRect = rectRight - rectLeft;
+                    const heightRect = rectBottom - rectTop;
+
+                    ctx.beginPath();
+                    ctx.rect(rectLeft, rectTop, widthRect, heightRect);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // Draw beautiful popup coordinate label when cursor hovers near curve
+        function drawCoordinateHover(width, height) {
+            if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
+
+            const mathX = screenToMathX(mouseX);
+            const distToCurve = getDistanceToCurve(mouseX, mouseY);
+
+            // Only snap hover to curve if mouse is relatively close to avoid visual noise
+            if (distToCurve < 45) {
+                const mathY = evaluateFunction(mathX);
+                const scrX = mathToScreenX(mathX);
+                const scrY = mathToScreenY(mathY);
+
+                // Draw hovering dot
+                ctx.fillStyle = COLORS.hoverMarker;
+                ctx.beginPath();
+                ctx.arc(scrX, scrY, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#020617';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Draw dynamic text hover panel
+                const hoverText = `(${mathX.toFixed(2)}, ${mathY.toFixed(2)})`;
+                ctx.font = 'bold 11px Fira Code';
+                const textWidth = ctx.measureText(hoverText).width;
+
+                const paddingX = 8;
+                const paddingY = 6;
+                const bubbleW = textWidth + paddingX * 2;
+                const bubbleH = 18 + paddingY * 2;
+
+                const bubbleX = Math.max(5, Math.min(width - bubbleW - 5, scrX - bubbleW / 2));
+                const bubbleY = Math.max(5, Math.min(height - bubbleH - 5, scrY - bubbleH - 12));
+
+                // Draw background card shadow/border
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+                ctx.strokeStyle = COLORS.hoverMarker;
+                ctx.lineWidth = 1;
+                
+                // Draw rounded rect manually or using standard Canvas function
+                ctx.beginPath();
+                ctx.roundRect(bubbleX, bubbleY, bubbleW, bubbleH, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(hoverText, bubbleX + paddingX, bubbleY + paddingY + 11);
+            }
+        }
+    </script>
+</body>
+</html>
